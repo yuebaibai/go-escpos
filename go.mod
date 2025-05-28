@@ -1,4 +1,4 @@
-module github.com/mect/go-escpos
+module github.com/yuebaibai/go-escpos
 
 go 1.16
 
