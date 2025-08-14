@@ -229,3 +229,8 @@ func (p *Printer) GetErrorStatus() (ErrorStatus, error) {
 
 	return ErrorStatus(data[0]), nil
 }
+
+// 设置字符集
+func (p *Printer) SetCharacterSet(n int) error {
+	return p.write(fmt.Sprintf("\x1B\x52%d", n))
+}
