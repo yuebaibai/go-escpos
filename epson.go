@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 )
 
 var ErrorNoDevicesFound = errors.New("No devices found")
@@ -233,4 +234,24 @@ func (p *Printer) GetErrorStatus() (ErrorStatus, error) {
 // 设置字符集
 func (p *Printer) SetCharacterSet(n int) error {
 	return p.write(fmt.Sprintf("\x1B\x52%d", n))
+}
+
+// WriteBytes 写入字节切片
+func (p *Printer) WriteBytes(data []byte) error {
+	if p.f != nil {
+		p.f.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	}
+	_, err := p.s.Write(data)
+	return err
+}
+
+// 设置是否开启下划线
+func (p *Printer) SetUnderline(underline bool) error {
+	if underline {
+		underlineBytes := []uint8{27, 33, 128}
+		return p.WriteBytes(underlineBytes)
+	} else {
+		underlineBytes := []uint8{27, 33, 0}
+		return p.WriteBytes(underlineBytes)
+	}
 }
