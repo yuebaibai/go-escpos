@@ -6,9 +6,12 @@ import (
 	"io"
 	"os"
 	"time"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
-var ErrorNoDevicesFound = errors.New("No devices found")
+var ErrorNoDevicesFound = errors.New("no devices found")
 
 // fufilled by either tinygoConverter or latinx
 type characterConverter interface {
@@ -231,11 +234,6 @@ func (p *Printer) GetErrorStatus() (ErrorStatus, error) {
 	return ErrorStatus(data[0]), nil
 }
 
-// 设置字符集
-func (p *Printer) SetCharacterSet(n int) error {
-	return p.write(fmt.Sprintf("\x1B\x52%d", n))
-}
-
 // WriteBytes 写入字节切片
 func (p *Printer) WriteBytes(data []byte) error {
 	if p.f != nil {
@@ -245,13 +243,82 @@ func (p *Printer) WriteBytes(data []byte) error {
 	return err
 }
 
-// 设置是否开启下划线
+// 设置打印机初始化
+func (p *Printer) SetInit() error {
+	bytes := []byte{0x1B, 0x40}
+	return p.WriteBytes(bytes)
+}
+
+// 设置字符集
+func (p *Printer) SetCharacterSet(n uint8) error {
+	// 15 代表中文字符集
+	bytes := []byte{0x1B, 0x52, n}
+	return p.WriteBytes(bytes)
+}
+
+// 设置是否开启中文下划线
 func (p *Printer) SetUnderline(underline bool) error {
 	if underline {
-		underlineBytes := []uint8{27, 33, 128}
-		return p.WriteBytes(underlineBytes)
+		bytes := []byte{0x1C, 0x2D, 1}
+		return p.WriteBytes(bytes)
 	} else {
-		underlineBytes := []uint8{27, 33, 0}
-		return p.WriteBytes(underlineBytes)
+		bytes := []byte{0x1C, 0x2D, 0}
+		return p.WriteBytes(bytes)
 	}
+}
+
+// 设置是否开启中文倍高模式
+func (p *Printer) SetDoubleHeight(doubleHeight bool) error {
+	if doubleHeight {
+		bytes := []byte{0x1C, 0x21, 0x08}
+		return p.WriteBytes(bytes)
+	} else {
+		bytes := []byte{0x1C, 0x21, 0x00}
+		return p.WriteBytes(bytes)
+	}
+}
+
+// 设置是否开启倍宽模式
+func (p *Printer) SetDoubleWidth(doubleWidth bool) error {
+	if doubleWidth {
+		bytes := []byte{0x1C, 0x21, 0x04}
+		return p.WriteBytes(bytes)
+	} else {
+		bytes := []byte{0x1C, 0x21, 0x00}
+		return p.WriteBytes(bytes)
+	}
+}
+
+// 设置是否开启加粗模式
+func (p *Printer) SetBold(bold bool) error {
+	if bold {
+		bytes := []byte{0x1B, 0x45, 0x01}
+		return p.WriteBytes(bytes)
+	} else {
+		bytes := []byte{0x1B, 0x45, 0x00}
+		return p.WriteBytes(bytes)
+	}
+}
+
+// 打印并换行
+func (p *Printer) PrintLine() error {
+	//  换行
+	bytes := []byte{0x0A}
+	return p.WriteBytes(bytes)
+}
+
+// 写入中文字符串
+func (p *Printer) WriteChineseString(str string) error {
+
+	// 创建 gbk 编码器
+	gbkEncoder := simplifiedchinese.GBK.NewEncoder()
+
+	// 编码字符串
+	result, _, err := transform.Bytes(gbkEncoder, []byte(str))
+	if err != nil {
+		return err
+	}
+	// 写入编码后的字符串
+	err = p.WriteBytes(result)
+	return err
 }
